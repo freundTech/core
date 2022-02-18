@@ -38,7 +38,7 @@ from homeassistant.const import (
     EVENT_HOMEASSISTANT_STOP,
 )
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import entity_registry as er, network
+from homeassistant.helpers import device_registry as dr, entity_registry as er, network
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.setup import async_setup_component
 
@@ -604,6 +604,37 @@ async def test_entity_availability(hass: HomeAssistant):
     await hass.async_block_till_done()
     state = hass.states.get(entity_id)
     assert state.state == "unavailable"
+
+
+@pytest.mark.parametrize(
+    "port,entry_type", ((8009, None), (12345, dr.DeviceEntryType.SERVICE))
+)
+async def test_device_registry(hass: HomeAssistant, port, entry_type):
+    """Test device registry integration."""
+    entity_id = "media_player.speaker"
+    reg = er.async_get(hass)
+    dev_reg = dr.async_get(hass)
+
+    info = get_fake_chromecast_info(port=port)
+
+    chromecast, _ = await async_setup_media_player_cast(hass, info)
+    chromecast.cast_type = pychromecast.const.CAST_TYPE_CHROMECAST
+    cast_status_cb, conn_status_cb, _ = get_status_callbacks(chromecast)
+
+    connection_status = MagicMock()
+    connection_status.status = "CONNECTED"
+    conn_status_cb(connection_status)
+    await hass.async_block_till_done()
+
+    state = hass.states.get(entity_id)
+    assert state is not None
+    assert state.name == "Speaker"
+    assert state.state == "off"
+    assert entity_id == reg.async_get_entity_id("media_player", "cast", str(info.uuid))
+    entity_entry = reg.async_get(entity_id)
+    assert entity_entry.device_id is not None
+    device_entry = dev_reg.async_get(entity_entry.device_id)
+    assert device_entry.entry_type == entry_type
 
 
 async def test_entity_cast_status(hass: HomeAssistant):
