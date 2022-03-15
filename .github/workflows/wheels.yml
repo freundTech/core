@@ -12,11 +12,13 @@ on:
     paths:
       - "requirements.txt"
       - "requirements_all.txt"
+  pull_request:
+    paths:
+      - '*'
 
 jobs:
   init:
     name: Initialize wheels builder
-    if: github.repository_owner == 'home-assistant'
     runs-on: ubuntu-latest
     outputs:
       architectures: ${{ steps.info.outputs.architectures }}
@@ -63,7 +65,6 @@ jobs:
 
   core:
     name: Build wheels with ${{ matrix.tag }} (${{ matrix.arch }}) for core
-    if: github.repository_owner == 'home-assistant'
     needs: init
     runs-on: ubuntu-latest
     strategy:
@@ -104,7 +105,6 @@ jobs:
 
   integrations:
     name: Build wheels with ${{ matrix.tag }} (${{ matrix.arch }}) for integrations
-    if: github.repository_owner == 'home-assistant'
     needs: init
     runs-on: ubuntu-latest
     strategy:
